@@ -1,0 +1,651 @@
+
+
+
+
+
+
+CSCI 6431: Network Working                                   Zikai Zhang
+Request for Comments: 49153                            George Washington
+Category: International Experimental                        October 2018
+
+
+
+
+                    Push And Pull For Mail
+
+Status of this Memo
+
+   This document specifies an Internet Standard track protocol to meet
+   course requirement, and requests discussion and suggestions for 
+   improvements. Please refer to the current edition of the "Internet 
+   Official Protocol Standards" (STD 1) for the standardization state 
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+Abstract
+   This RFC provides basic push and pull mechanism for a client to 
+   Communicate with a standard SMTP server, with detailed description of
+   Commands provided.
+
+Copyright Notice
+   Zikai Zhang (2018) All rights reserved.
+
+Table of Contents
+
+   1. Introduction ................................................    2
+   2. Basic Operation .............................................    2
+   3. Commands for the Pull Related Operation......................    3
+      QUIT Command ................................................    3
+      STAT Command ................................................    3
+      LIST Command ................................................    4
+      READ Command ................................................    5
+      DELE Command ................................................    6
+      NOOP Command ................................................    7
+      RSET Command ................................................    7
+      USER Command ................................................    8
+      PASS Command ................................................    9
+   4. Commands for the Push Related Operation......................    9
+      HELO Command ................................................    9
+      MAIL Command ................................................   10
+      RCPT Command ................................................   10
+      DATA Command ................................................   11
+      RSTE Command ................................................   11
+      NOPO Command ................................................   12
+      QUTI Command ................................................   12
+   5. PAPM Commands Summary .......................................   13
+   6. References ..................................................   13
+   7. Authors' Addresses ..........................................   13
+
+Zhang                International Experimental                  [Page 1]
+
+RFC 49153                          PAPM                      October 2018
+
+
+   1. Introduction
+
+   The objective of this PAPM protocol is to transfer electronic mail 
+   between mail agent and client mail server reliably. This protocol aims
+   to provide a reliable transfer for e-mails between client users and
+   standard client SMTP server.
+
+   As is known, it is impractical to maintain a message transport system
+   (MTS) on relatively smaller nodes (cell phones, workstations,
+   etc.) on the Internet. It is not only because of the insufficiency
+   of resources such as disk space but also because of the improbability
+   of continuation of system running time of those smaller nodes.
+   However, it is very useful to be able to access e-mails on these 
+   smaller nodes. The PAPM protocol, designed to fill the gap between 
+   user agents on smaller nodes and client mail servers, can be used 
+   to solve this problem.
+   
+   There are mainly two parts of PAPM protocol. One is intended to 
+   provide a method to push e-mails from user agents to client mail 
+   servers and the other is intended to provide a strategy to pull e-
+   mails from mail servers to user agents.
+
+   PAPM is not intended to provide sophisticated e-mail push and pull 
+   method. Normally, an e-mail pulled from the mail server is then
+   deleted. 
+   
+2. Basic Operation
+
+   The server host (server running standard SMTP protocol) starts the 
+   PAPM service by listening to port 49153.
+   The client host requests this service by first establish a TCP 
+   connection with the server. After greeting each other, the client and
+   the server host exchange commands and replies until the connection
+   is closed.
+
+   Commands in PAPM protocol consist of a case-insensitive keyword (
+   four characters long) and probably arguments. Those commands are 
+   terminated by a pair of character CR and LF. The keyword and 
+   arguments in a command are all separated by SPACE character and are 
+   all printable ASCII characters.
+
+
+Zhang                International Experimental                  [Page 2]
+
+RFC 49153                          PAPM                      October 2018
+
+
+   Specifically, replies in the pull related operation of PAPM protocol
+   consist of a status indicator, a keyword and probably additional 
+   information. Those replies are terminated by a pair of character CR 
+   and LF. There are two status indicators: “+OK” (indicating “positive”)
+   and “-ERR” (indicating “negative”), which must be sent in upper case.
+
+   A server communicating with PAPM protocol must reply to an invalid 
+   command with a negative status indicator. 
+
+   A server implementing PAPM protocol may have a timer for inactivity
+   logout. The receipt of any command from the client during the running
+   of the timer suffices to reset the timer.
+
+3. Commands for the Pull Related Operation
+
+   3.1 The QUIT Command
+
+      QUIT
+
+         Arguments: none
+
+         Possible Responses:
+             +OK
+         Description:
+             This command is used to close the TCP connection between the
+             client and the server and update the content of the mail drop
+             in the server.
+	     
+         Examples:
+             C: QUIT
+             S: +OK server signing off
+
+   3.2 The STAT Command
+
+
+
+
+
+
+
+
+
+Zhang                International Experimental                  [Page 3]
+
+RFC 49153                          PAPM                      October 2018
+
+
+
+      STAT
+
+         Arguments: none
+
+         Description:
+             The PAPM server responds with a positive reply containing
+             information for the mail drop. This line is called “listing”
+             of that mail drop hereafter.
+
+             The positive reply consists of a status indicator followed 
+             by a SPACE character, a decimal number of number of mails 
+             in that mail drop followed by a SPACE character, and a decimal
+             number of the size of the mail drop followed by the pair of
+             character CR and LF.
+
+             Those messages marked as deleted do not contribute to total 
+             number of messages.
+
+         Possible Responses:
+             +OK num1 num2
+
+         Examples:
+             +OK 4 512
+
+   3.3 The LIST Command
+
+      LIST num
+
+         Arguments: a number for message. It may not refer to a message 
+             marked as deleted.
+         
+         Description:
+             If an argument is given, the server responds with a positive
+             reply containing information for the message specified. This
+             line is called “L-listing” of that mail drop hereafter.
+             
+
+
+
+
+
+
+Zhang                International Experimental                  [Page 4]
+
+RFC 49153                          PAPM                      October 2018
+
+
+             In case of multiple lines of replies, which is caused by a
+             positive reply of the LIST command without arguments, each
+             single line is called “L-listing” of that mail drop hereafter.
+             In case of no messages in the mail drop, the server responds 
+             with reply consisting of a positive indicator, a terminator 
+             and a pair of character CR and LF.
+
+             The positive reply consists of a status indicator followed 
+             by a SPACE character, a decimal number of message for 
+             referring followed by a SPACE character, and a decimal number  
+             describing the actual size of the message in the mail drop
+             followed by a pair of character CR and LF. The negative reply,
+             on the other hand, consists of a status indicator followed by 
+             a string describing the actual information in the mail drop 
+             followed by a character pair CR and LF.
+            
+         Possible Responses:
+             +OK (L-listing follows)
+             -ERR no such message
+
+         Examples:
+             	C: LIST
+	        S: +OK 1 28
+	        S: +OK 2 86
+	        S: +OK 3 128
+	        …
+	        C: LIST 2
+	        S: +OK 2 86
+        	C: LIST 1
+        	S: +OK 1 28
+	        C: LIST 3
+        	S: -ERR no such message
+
+   3.4 The READ Command
+
+      READ num
+
+         Arguments: a number for message. It may not refer to a message 
+	     marked as deleted.
+
+
+
+
+
+Zhang                International Experimental                  [Page 5]
+
+RFC 49153                          PAPM                      October 2018
+
+
+         Description:
+             The server issues either a positive response or a negative 
+             response. In case of a negative response, the reply contains
+             a status indicator followed by a string describing actual 
+             information in the mail drop followed by a character pair 
+             CR and LF. In case of a positive response, the reply contains
+             multiple lines. The first line consists of a status indicator 
+             followed by SPACE character, a decimal message number 
+             referring to the message in the mail drop followed by a SPACE
+             character, and a decimal number of message size. The following
+             but the last line consists of message body. Each line ends 
+             with a character pair CR and LF. The last line consists of 
+             “.CRLF”.
+
+         Possible Responses:
+             +OK (message follows)
+             -ERR no such message
+
+         Examples:
+             C: READ 1
+             S: +OK 1 512
+             S: <the POP3 server sends the entire message here>
+             S: .
+
+   3.5 The DELE Command
+
+      DELE num
+
+         Arguments:a number for message. It may not refer to a message 
+	     marked as deleted.
+
+             
+
+
+
+
+
+
+
+
+
+
+
+Zhang                International Experimental                  [Page 6]
+
+RFC 49153                          PAPM                      October 2018
+
+
+         Discussion:
+             The server marks the message specified as deleted. Any 
+             reference to the message after it being operated by the 
+             DELE command generates an error. The server does not actually
+             delete the message until the QUIT command is received.
+
+         Possible Responses:
+             +OK message deleted
+             -ERR no such message
+
+         Examples:
+             C: DELE 1
+             S: +OK message deleted
+
+   3.6 The NOOP Command
+
+      NOOP
+
+         Arguments:(none)
+
+         Desciprtion:
+             This command is a pull related command. Upon receiving, 
+             the server does nothing except issues a positive reply.
+
+         Possible Responses:
+             +OK
+
+         Examples:
+             C: NOOP
+             S: +OK
+
+   3.7 The RSET Command
+
+      RSET
+
+         Arguments:(none)
+
+         Description:
+             This command is a pull related command. The server unmarks
+             the message marked as deleted then issues a positive reply.
+
+
+Zhang                International Experimental                  [Page 7]
+
+RFC 49153                          PAPM                      October 2018
+
+
+         Possible Responses:
+             +OK
+
+         Examples:
+             C: RSET
+             S: +OK
+
+    3.8 The USER Command
+
+      USER string
+
+         Arguments:A string capable of identifying a specific mail drop.
+
+         Description:
+             The server responds with a positive message if a mail drop
+             exists and responds with a negative message if a mail drop
+             does not. The PASS command immediately following USER command
+             serves to authenticate. It is also possible for a QUIT 
+             command to follow PASS to close the TCP connection.
+
+         Possible Responses:
+             +OK mail drop name valid
+             -ERR mail drop name invalid
+
+         Examples:
+             C: USER zzkaing
+             S: +OK mail drop name valid
+             C: USER god
+             S: -ERR mail drop name invalid
+             C: USER zzkaist
+             S: -ERR mail drop name invalid
+             C: USER zzkaisn
+             S: -ERR mail drop name invalid
+             C: USER zzkkkkk
+             S: -ERR mail drop name invalid
+             C: USER dog
+             S: -ERR mail drop name invalid
+             
+             
+             
+
+
+
+
+
+
+Zhang                International Experimental                  [Page 8]
+
+RFC 49153                          PAPM                      October 2018
+
+
+   3.9 The PASS Command
+
+     PASS string
+
+        Arguments: A valid password.
+
+	Description:
+            The server uses the pair of argument from USER and PASS command
+            to determine if the access of the certain mail drop should be
+            given.
+			
+	Possible Responses:
+	    +OK mail drop ready
+	    -ERR invalid username/password combination
+			
+	Examples:
+            C: PASS god
+            S: -ERR invalid username/password combination
+
+
+4. Commands for Push Related Operation
+
+   4.1 The HELO Command
+
+     HELO string
+
+         Arguments:specify the domain name of the sender.
+
+         Description:
+             The server host awaits HELO command to establish a TCP 
+             connection and start the PAPM service. The server host uses
+             the argument string to identify the sender’s domain name.
+			
+	 Possible Responses:
+	     +OK 
+	     -ERR 
+			
+	 Examples:
+	     C: HELO bar.com
+	     S: +OK
+	     C: HELO bal.com
+	     S: -ERR
+
+
+
+Zhang                International Experimental                  [Page 9]
+
+RFC 49153                          PAPM                      October 2018
+
+   4.2 The MAIL Command
+
+     MAIL FROM: (account address)
+
+         Arguments: “FROM:” + a valid account address
+
+	 Description:
+             The server host uses the argument to identify the account to
+             be used to send e-mails from. 
+			
+	 Possible Responses:
+	     +OK 
+	     -ERR user account not registered
+			
+	Examples:
+	     C: MAIL FROM: zzkaing@hotmail.com
+	     S: +OK
+	     C: MAIL FROM: saiduf@hotmail.com
+	     S: -ERR user account not registered
+
+   4.3 The RCPT Command
+
+     RCPT TO: (account address)
+
+         Arguments: “TO:” + a valid account address
+
+         Description:
+             The server host uses the argument to identify the account to be
+             used to send e-mails to. 
+			
+         Possible Responses:
+             +OK 
+	     ERR user account invalid
+			
+         Examples:
+	     C: RCPT TO: bob@hotmail.com
+	     S: +OK
+	     C: RCPT TO: saidux@hotmail.com
+	     S: -ERR user account invalid
+
+
+
+
+
+Zhang                International Experimental                  [Page 10]
+
+RFC 49153                          PAPM                       October 2018
+
+
+
+   4.4 The DATA Command
+
+     DATA
+
+         Arguments: (None)
+
+         Description:
+             Upon receiving this command, the server host replies with a +OK 
+             and gets ready to receive message input. The message input ends
+             with a new line consisting of “.”and a character pair CR and LF.
+             Each line of message ends with a character pair CR and LF. After
+             mail input, the server host replies with a +OK.
+			
+         Possible Responses:
+             +OK 
+			
+         Examples:
+             C: DATA
+             S: +OK
+ 	     C: Date: Thu, 21 May 1998 05:33:29 -0700
+ 	     C: From: Zikai Zhang <zzkaing@hotmail.com>
+ 	     C: Subject: What about the universe?
+ 	     C: To: bob@hotmail.com
+	     C:
+             C: Bob:
+             C: The universe in within our mind.
+             C: Zikai Zhang
+             C: .
+      	     S: +OK
+
+   4.5 The RSTE Command
+
+     RSTE
+
+         Arguments: (None)
+
+         Description:
+              This is a push operation related command.
+              Upon receiving this command, the server host should abort 
+              current mail transaction, which means it should delete all 
+
+
+
+
+Zhang                International Experimental                  [Page 11]
+
+RFC 49153                          PAPM                       October 2018
+
+
+             information about sender, receiver, and mail data. The server
+             host replies with a positive response. The TCP connection should
+             not be closed.
+
+         Possible Responses:
+                +OK 
+			
+         Examples:
+	        C: RSTE
+	        S: +OK
+
+
+   4.6 The NOPO Command
+
+     NOPO
+
+         Arguments: (None)
+
+         Description:
+              This is a push operation related command.
+              This command stimulates no action in the server host other 
+              than a reply +OK from the host.
+			
+         Possible Responses:
+	     +OK 
+			
+   4.7 The QUTI Command
+
+     QUTI
+
+         Arguments: (None)
+
+         Description:
+              This is a push operation related command.
+              This command is used to close the TCP connection between the 
+              client and the server and update the content of the mail drop 
+              in the server.
+
+         Possible Responses:
+	      +OK 
+			
+	 Examples:
+	      C: QUTI
+	      S: +OK
+
+
+
+
+Zhang                International Experimental                  [Page 12]
+
+RFC 49153                          PAPM                       October 2018
+
+
+5.PAPM commands summary
+
+   5.1	PAPM Pull Related Commands
+
+     QUIT
+     STAT
+     LIST num
+     READ num
+     DELE num     
+     NOOP
+     RSET
+     USER string
+     PASS string
+
+   5.2 PAPM Push Related Commands
+
+     HELO string
+     MAIL string     
+     RCPT string
+     DATA
+     RSTE
+     NOPO
+     QUTI
+
+12. References
+
+   [1] Myers, J. and Rose, M., "Post Office Protocol - Version 3" RFC
+       1939, May 1996.
+
+   [2] Klensin, J., "Simple Mail Transfer Protocol' RFC 5321, October
+       2008.
+       
+15. Authors' Addresses
+
+   Zikai Zhang
+   The George Washington University
+   2121 I Street
+   Washington, D.C. 20052
+
+   Email: zzkaist@gwu.edu
+
+
+
+
+
+
+
+
+
+
+Zhang                International Experimental                  [Page 13]
